@@ -1,0 +1,1 @@
+from .trucks import DumpTruck, ModelTruck

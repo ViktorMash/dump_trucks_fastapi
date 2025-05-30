@@ -1,0 +1,1 @@
+from .trucks import trucks_router
