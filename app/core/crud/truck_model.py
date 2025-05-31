@@ -28,35 +28,7 @@ async def create_model(
     return model
 
 
-async def read_models(
-        db: AsyncSession,
-        skip: int = 0,
-        limit: int = 100,
-        count_total: bool = False
-) -> List[ModelTruck] | Tuple[List[ModelTruck], int]:
-    """ Получить список всех моделей """
-
-    # Подсчет общего количества (если нужен)
-    total_count = None
-    if count_total:
-        count_stmt = select(func.count(ModelTruck.id))
-        total_count = await db.scalar(count_stmt)
-
-    stmt = (
-        select(ModelTruck)
-        .order_by(ModelTruck.name)
-        .offset(skip)
-        .limit(limit)
-    )
-    result = await db.execute(stmt)
-    models = list(result.scalars().all())
-
-    if count_total:
-        return models, total_count
-    return models
-
-
-async def read_model_by_id(
+async def get_model_by_id(
         db: AsyncSession,
         model_id: int
 ) -> ModelTruck:
@@ -68,6 +40,29 @@ async def read_model_by_id(
     return model
 
 
+async def get_models_list(
+        db: AsyncSession,
+        skip: int = 0,
+        limit: int = 100
+) -> Tuple[List[ModelTruck], int]:
+    """ Получить список всех моделей """
+
+    # Подсчет общего количества
+    count_stmt = select(func.count(ModelTruck.id))
+    total_count = await db.scalar(count_stmt)
+
+    stmt = (
+        select(ModelTruck)
+        .order_by(ModelTruck.name)
+        .offset(skip)
+        .limit(limit)
+    )
+    result = await db.execute(stmt)
+    models = list(result.scalars().all())
+
+    return models, total_count
+
+
 async def update_model(
         db: AsyncSession,
         model: ModelTruck,
@@ -75,7 +70,7 @@ async def update_model(
 ) -> ModelTruck:
     """ Обновить модель самосвала """
 
-    # Проверяем уникальность названия если оно меняется
+    # Проверяем уникальность названия
     if payload.name.lower() != model.name.lower():
         stmt = select(ModelTruck.id).where(
             ModelTruck.name.ilike(payload.name),
@@ -96,7 +91,7 @@ async def delete_model(
         db: AsyncSession,
         model: ModelTruck
 ) -> None:
-    """Удалить модель самосвала"""
+    """ Удалить модель самосвала """
 
     await db.delete(model)
     await db.commit()

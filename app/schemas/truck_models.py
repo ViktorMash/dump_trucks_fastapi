@@ -21,7 +21,7 @@ class TruckModelCreateSchema(BaseModel):
 
 
 class TruckModelSchema(TruckModelCreateSchema):
-    """Схема модели самосвала с ID"""
+    """ Схема модели самосвала с ID """
 
     id: int = Field(
         default=...,

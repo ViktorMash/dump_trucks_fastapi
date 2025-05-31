@@ -3,12 +3,10 @@ from typing import Optional, Any, Dict
 from fastapi import status, Request
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
-from datetime import datetime, date
 
 from app.schemas.http_response import (
     ResponseSchema, ResponseMetaSchema, ResponseLinksSchema, ErrorResponseSchema
 )
-from app.config import settings
 
 
 class ApiResponse:
@@ -120,31 +118,45 @@ class ApiResponse:
         if data is None:
             return None
 
-        # объекты даты/времени
-        if isinstance(data, (datetime, date)):
-            return data.strftime(settings.date_format)
-
         # ORM-объект
         if hasattr(data, "__table__") and hasattr(data, "__dict__"):
             result = {}
+
             for column in data.__table__.columns:
-                value = getattr(data, column.name)
-                if isinstance(value, (datetime, date)):
-                    result[column.name] = value.strftime(settings.date_format)
-                else:
-                    result[column.name] = value
+                try:
+                    # Проверяем, загружен ли атрибут
+                    if column.name in data.__dict__:
+                        result[column.name] = getattr(data, column.name, None)
+                except Exception:
+                    # Пропускаем атрибуты, которые не могут быть загружены
+                    continue
 
             # Добавляем вычисляемые параметры для DumpTruck
-            if hasattr(data, 'overload_percentage'):
-                result['overload_percentage'] = data.overload_percentage
-            if hasattr(data, 'load_percentage'):
-                result['load_percentage'] = data.load_percentage
-            if hasattr(data, 'is_overloaded'):
-                result['is_overloaded'] = data.is_overloaded
+            try:
+                if hasattr(data, 'load_percentage'):
+                    result['load_percentage'] = data.load_percentage
+            except Exception:
+                pass
+
+            try:
+                if hasattr(data, 'overload_percentage'):
+                    result['overload_percentage'] = data.overload_percentage
+            except Exception:
+                pass
+
+            try:
+                if hasattr(data, 'is_overloaded'):
+                    result['is_overloaded'] = data.is_overloaded
+            except Exception:
+                pass
 
             # Добавляем связанные объекты
-            if hasattr(data, 'model') and data.model:
-                result['model'] = cls._prepare_data(data.model)
+            try:
+                if hasattr(data, 'model') and 'model' in data.__dict__ and data.model:
+                    result['model'] = cls._prepare_data(data.model)
+            except Exception:
+                # Если model не загружен, пропускаем
+                pass
 
             return result
 

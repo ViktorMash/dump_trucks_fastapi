@@ -10,8 +10,17 @@ class ModelTruck(BaseModel):
     """ Модель самосвала """
     __tablename__ = "truck_models"
 
-    name = Column(String, unique=True, nullable=False, comment="Название модели")
-    max_capacity = Column(Integer, nullable=False, comment="Максимальная грузоподъемность (тонн)")
+    name = Column(
+        String,
+        unique=True,
+        nullable=False,
+        comment="Название модели"
+    )
+    max_capacity = Column(
+        Integer,
+        nullable=False,
+        comment="Максимальная грузоподъемность (тонн)"
+    )
 
     trucks = relationship("DumpTruck", back_populates="model")
 
@@ -23,15 +32,24 @@ class DumpTruck(BaseModel):
     """ Параметры конкретного самосвала """
     __tablename__ = "dump_trucks"
 
-    board_number = Column(String, unique=True, nullable=False, comment="Бортовой номер")
-    current_weight = Column(Integer, nullable=False, comment="Текущий вес груза (тонн)")
-
-    model_id = Column(Integer, ForeignKey("truck_models.id"), nullable=False)
+    model_id = Column(
+        Integer,
+        ForeignKey("truck_models.id"),
+        nullable=False,
+    )
+    board_number = Column(
+        String,
+        unique=True,
+        nullable=False,
+        comment="Бортовой номер"
+    )
+    current_weight = Column(
+        Integer,
+        nullable=False,
+        comment="Текущий вес груза (тонн)"
+    )
 
     model = relationship(ModelTruck, back_populates="trucks")
-
-    def __repr__(self):
-        return f"<Самосвал с бортовым номером {self.board_number} и текущей загрузкой {self.current_weight}>"
 
     @property
     def load_percentage(self) -> float:
@@ -51,3 +69,7 @@ class DumpTruck(BaseModel):
     def is_overloaded(self) -> bool:
         """ Проверяет, перегружен ли самосвал """
         return self.load_percentage > 100
+
+    def __repr__(self):
+        return f"<Самосвал с бортовым номером {self.board_number} и текущей загрузкой {self.current_weight}>"
+

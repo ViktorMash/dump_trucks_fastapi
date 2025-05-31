@@ -1,8 +1,8 @@
 class ModelNotFoundError(Exception):
-    """Исключение когда модель не найдена"""
+    """ Модель не найдена """
     pass
 
 
 class DuplicateModelNameError(Exception):
-    """Исключение когда модель с таким именем уже существует"""
+    """ Модель с таким именем уже существует """
     pass

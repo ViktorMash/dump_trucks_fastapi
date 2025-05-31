@@ -34,33 +34,34 @@ async def create_truck(
     await db.commit()
     await db.refresh(truck)
 
-    # Загружаем связанную модель
     await db.refresh(truck, ['model'])
     return truck
 
 
-async def read_truck(
-    *,
+async def get_truck_by_id(
     db: AsyncSession,
-    truck_id: Optional[int] = None,
+    truck_id: int
+) -> DumpTruck:
+    """ Получить самосвал по ID """
+    stmt = select(DumpTruck).options(selectinload(DumpTruck.model)).where(DumpTruck.id == truck_id)
+    result = await db.execute(stmt)
+    truck = result.unique().scalar_one_or_none()
+    if not truck:
+        raise TruckNotFoundError(f"Самосвал с ID {truck_id} не найден")
+    return truck
+
+
+async def get_trucks_list(
+    db: AsyncSession,
     board_number: Optional[str] = None,
     model_name: Optional[str] = None,
     skip: int = 0,
     limit: int = 50,
-) -> DumpTruck | Tuple[List[DumpTruck], int]:
+) -> Tuple[List[DumpTruck], int]:
     """
-        Получить один самосвал по id или список по фильтрам.
-        Применяем опциональные фильтры + пагинацию
+        Получить список самосвалов с фильтрацией и пагинацией.
+        :return (список самосвалов, общее количество)
     """
-
-    if truck_id is not None:
-        stmt = select(DumpTruck).options(selectinload(DumpTruck.model)).where(DumpTruck.id == truck_id)
-        result = await db.execute(stmt)
-        truck = result.unique().scalar_one_or_none()
-        if not truck:
-            raise TruckNotFoundError(f"Самосвал с ID {truck_id} не найден")
-        return truck
-
     stmt = (
         select(DumpTruck)
         .options(selectinload(DumpTruck.model))
@@ -78,10 +79,9 @@ async def read_truck(
             DumpTruck.model.has(ModelTruck.name.ilike(f"%{model_name}%"))
         )
 
-    # Подсчет общего количества (если нужен)
+    # Подсчет общего количества
     count_stmt = select(func.count(DumpTruck.id))
 
-    # Применяем те же фильтры для подсчета
     if board_number:
         count_stmt = count_stmt.where(
             DumpTruck.board_number.ilike(f"%{board_number}%")
@@ -116,7 +116,7 @@ async def update_truck(
         if not await db.get(ModelTruck, payload.model_id):
             raise TruckModelNotFoundError("Новая модель самосвала не найдена")
 
-    # Проверяем уникальность бортового номера (если он меняется)
+    # Проверяем уникальность бортового номера
     if payload.board_number.lower() != truck.board_number.lower():
         stmt = select(DumpTruck.id).where(
             DumpTruck.board_number.ilike(payload.board_number),
@@ -129,9 +129,13 @@ async def update_truck(
     truck.board_number = payload.board_number
     truck.current_weight = payload.current_weight
 
-    await db.commit()
-    await db.refresh(truck, ['model'])
-    return truck
+    # Перезагружаем объект со всеми связями
+    await db.refresh(truck)
+    stmt = select(DumpTruck).options(selectinload(DumpTruck.model)).where(DumpTruck.id == truck.id)
+    result = await db.execute(stmt)
+    refreshed_truck = result.unique().scalar_one()
+
+    return refreshed_truck
 
 
 async def delete_truck(db: AsyncSession, truck: DumpTruck) -> None:

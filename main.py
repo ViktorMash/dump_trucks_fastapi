@@ -5,13 +5,22 @@ from fastapi.responses import RedirectResponse
 from starlette.responses import JSONResponse
 
 from app.core.init_test_data import init_test_data
-from app.db.session import engine, Base, get_db
+from app.db.session import engine, Base, get_db, AsyncSessionLocal
 
 from app.db.models import DumpTruck, ModelTruck
-from app.api.trucks import trucks_router
+from app.api import trucks_router, truck_models_router
 from app.config import settings
 
 import uvicorn
+
+
+async def initialize_test_data():
+    """ Инициализация тестовых данных """
+    try:
+        async with AsyncSessionLocal() as session:
+            await init_test_data(session)
+    except Exception as e:
+        print(f"Ошибка при инициализации тестовых данных: {e}")
 
 
 @asynccontextmanager
@@ -23,12 +32,7 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
 
     # Инициализация тестовых данных
-    try:
-        async for db in get_db():
-            await init_test_data(db)
-            break
-    except Exception as e:
-        print(f"Ошибка при инициализации тестовых данных: {e}")
+    await initialize_test_data()
 
     yield
     print("Остановка приложения")
@@ -64,6 +68,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 app.include_router(trucks_router, prefix=settings.api_prefix)
+app.include_router(truck_models_router, prefix=settings.api_prefix)
 
 
 if __name__ == "__main__":

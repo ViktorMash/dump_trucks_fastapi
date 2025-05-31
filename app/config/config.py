@@ -23,7 +23,6 @@ class Settings(BaseSettings):
     description: str = "Веб приложение для контроля работы самосвалов"
     api_prefix: str = "/api/v1"
     debug: bool = True
-    date_format: str = "%Y-%m-%d"
 
     db: DataBaseSettings = DataBaseSettings()
 
